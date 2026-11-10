@@ -35,3 +35,13 @@ node badapple/encode.mjs video/bad_apple.mp4 96 72 15
 - **Управление.** Кнопки ⟲ ▲ ▼ ⟳ работают на удержание. FIRE или тап по экрану — выстрел. Горизонтальный свайп по экрану поворачивает камеру.
 - **Игра.** Волны красных демонов, мини-карта, рекорд хранится в `localStorage`. Враги ищут путь к игроку поиском в ширину по клеткам карты и обходят стены.
 - **CPU.** Цикл работает только во время игры: до первого нажатия, через 15 с без ввода и на экране смерти он стоит. Во время игры ~270 canvas-команд и ~0,6 мс JS на кадр.
+
+## Деплой на VPS
+
+На Ubuntu с Node 18+ под root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tapatuli4kaa/telegram-widget-shooter/main/deploy/install.sh | sh
+```
+
+Скрипт клонирует репозиторий в `/opt/telegram-widget-shooter` и ставит сервис systemd `widget-shooter`, который работает от пользователя `widgetbot`. Впиши `BOT_TOKEN` в `/opt/telegram-widget-shooter/.env` и выполни `systemctl restart widget-shooter`. Чтобы обновить бота, запусти ту же команду ещё раз. Логи смотри через `journalctl -u widget-shooter -f`.
