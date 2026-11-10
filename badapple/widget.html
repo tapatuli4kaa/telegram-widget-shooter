@@ -1,0 +1,43 @@
+<style>
+body{margin:0;padding:0 0 max(6px,env(safe-area-inset-bottom));background:#000;color:#fff;font:13px system-ui}
+canvas{display:block;width:100%;aspect-ratio:4/3}
+#bar{height:3px;background:#222}#pb{height:3px;width:0;background:#fff}
+#row{display:flex;align-items:center;gap:10px;padding:8px 12px 2px 24px}
+#st{flex:1;color:#999;font-variant-numeric:tabular-nums}
+button{background:#fff;color:#000;border:0;border-radius:15px;padding:6px 14px;font:600 14px system-ui}
+</style>
+<canvas id="c"></canvas><div id="bar"><div id="pb"></div></div>
+<div id="row"><button id="b">▶ Play</button><span id="st">Bad Apple!! · __W__×__H__</span></div>
+<script>
+const W=__W__,H=__H__,FPS=__FPS__,N=__N__,S=W+4,TW=window.TelegramWidget,$=i=>document.getElementById(i),R=[1,2,2,3,3,4,4,4,5];
+const cv=$('c'),g=cv.getContext('2d'),K=Math.max(1,Math.floor(480/W));
+cv.width=W*K;cv.height=H*K;g.scale(K,K);g.fillRect(0,0,W,H);
+let P,C,cur,prv,ch,ci,left,shown,buf,pos,rg,cd,on=0,lp=0,wait=1,t0=0,stall=0,lastAsk=0;
+function reset(){P=new Uint16Array(4097).fill(32768);C=new Uint8Array(4097);cur=new Uint8Array(S*(H+4));prv=new Uint8Array(S*(H+4));ch={};ci=0;left=0;shown=0;wait=1;stall=0}
+function bit(i){let p=P[i],b=(rg>>>16)*p,k=C[i]<8?R[C[i]++]:5;
+if(cd<b){rg=b;p+=(65536-p)>>k;b=0}else{cd-=b;rg-=b;p-=p>>k;b=1}
+P[i]=p<64?64:p>65472?65472:p;
+while(rg<16777216){rg=rg*256>>>0;cd=(cd*256+(pos<buf.length?buf[pos++]:0))>>>0}
+return b}
+function dec(){if(!left){buf=ch[ci];if(!buf)return 0;delete ch[ci];ci++;left=buf[0];pos=1;rg=4294967295;cd=0;for(let k=0;k<5;k++)cd=(cd*256+(pos<buf.length?buf[pos++]:0))>>>0}
+left--;if(bit(4096))return 1;const c=prv,q=cur;
+for(let y=0;y<H;y++)for(let x=0,i=(y+2)*S+2;x<W;x++,i++)c[i]=bit(c[i-1]|c[i-2]<<1|c[i-S-1]<<2|c[i-S]<<3|c[i-S+1]<<4|c[i-2*S]<<5|q[i]<<6|q[i-1]<<7|q[i+1]<<8|q[i-S]<<9|q[i+S]<<10|c[i-S+2]<<11);
+prv=q;cur=c;return 1}
+function draw(){g.fillStyle='#000';g.fillRect(0,0,W,H);g.fillStyle='#fff';g.beginPath();for(let y=0;y<H;y++){const r=(y+2)*S+2;for(let x=0;x<W;){if(cur[r+x]){let e=x;while(e<W&&cur[r+e])e++;g.rect(x,y,e-x,1);x=e}else x++}}g.fill()}
+function ahead(){let a=left;for(let k=ci;ch[k];k++)a+=ch[k][0];return a}
+function got(s){if(!on||!s)return;const j=s.indexOf(':'),n=+s.slice(0,j);if(!(n>=ci)||ch[n]||n<0)return;const b=atob(s.slice(j+1)),u=new Uint8Array(b.length);for(let k=0;k<b.length;k++)u[k]=b.charCodeAt(k);ch[n]=u}
+const st=t=>$('st').textContent=t,tm=f=>{f=Math.floor(f/FPS);return Math.floor(f/60)+':'+String(f%60).padStart(2,'0')};
+function tick(t){if(!on){lp=0;return}requestAnimationFrame(tick);const a=ahead();
+if(wait){if(a>=Math.min(FPS*3,N-shown)){wait=0;t0=t-shown*1000/FPS}else{st('buffering '+Math.round(a/FPS/3*100)+'%');
+if(!a&&Object.keys(ch).length&&t-lastAsk>5000&&TW){lastAsk=t;TW.request('get:'+ci).then(r=>got(r.result),()=>{$('b').textContent='⟳ Resync';stall=1})}return}}
+let due=Math.floor((t-t0)*FPS/1000),d=0;if(due-shown>3){t0+=(due-shown-3)*1000/FPS;due=shown+3}
+while(shown<due&&shown<N){if(!dec()){wait=1;break}shown++;d=1}
+if(d){draw();$('pb').style.width=shown/N*100+'%';st(tm(shown)+' / '+tm(N))}
+if(shown>=N){on=0;$('b').textContent='↻ Replay';st('fin · '+tm(N))}}
+$('b').onclick=()=>{if(!TW){st('open in Telegram');return}
+if(on&&!stall){on=0;TW.request('stop').catch(()=>0);$('b').textContent='▶ Play';st('stopped');return}
+if(!on)reset();const from=ci;on=1;stall=0;$('b').textContent='■ Stop';st('connecting…');
+TW.request('go:'+from).then(r=>{got(r.result);if(!lp){lp=1;requestAnimationFrame(tick)}},e=>{on=0;$('b').textContent='▶ Play';st(e.code==='NOT_ALLOWED'?'open the bot chat to play':'error: '+e.code)})};
+if(TW)TW.onEvent('chatDataChanged',()=>got(TW.chatData));
+reset();
+</script>
